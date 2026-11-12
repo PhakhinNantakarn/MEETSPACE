@@ -1,48 +1,91 @@
-# MeetSpace
+# MEETSPACE — Smart Conference Room
 
-**MeetSpace** is a web application for booking meeting rooms.
-Anyone can check which rooms are free without an account. Members sign in to
-reserve and manage their bookings, and administrators manage rooms and users.
+**MEETSPACE** is a web-based meeting room reservation system. It has a member
+website and a separate walk-in kiosk.
+
+## About the Project
+
+### The problem
+
+Staff who need a meeting room often don't know which rooms have the right
+equipment or enough seats. The room status they see isn't reliable either: a
+room can look free while someone is already using it.
+
+Bookings are also made informally, through chat messages or verbal agreements,
+and kept in different places. As a result:
+
+- the same room gets booked twice
+- people waste time looking for a room, even for urgent meetings
+- no one can tell who is responsible for a booking
+
+### Our solution
+
+MEETSPACE keeps every booking in one shared record, whether it was made in
+advance by a member or on the spot by a walk-in visitor. This means no time
+slot can be booked twice.
+
+Before booking, users can see each room's photo, equipment, capacity, and
+which time slots are taken. Every valid booking is confirmed immediately.
+
+Administrators can see who made each booking and which channel it came from,
+and they can cancel bookings when needed.
+
+---
+
+## Team Members
+
+| No. | Student ID | Name                        |
+|-----|------------|-----------------------------|
+| 1   | 6831503064 | Phakhin Nantakarn           |
+| 2   | 6831503067 | Ratchata Suppattapan        |
+| 3   | 6831503070 | Witthawin Tanaset           |
+| 4   | 6831503072 | Siwakorn Jaronsak           |
+| 5   | 6831503116 | Thanaphathr Phutthiphiriya  |
+
+School of Applied Digital Technology, Mae Fah Luang University
 
 ---
 
 ## Features
 
-- **Room overview**: see every room with its photo, capacity, amenities, and an
-  08:00–20:00 availability timeline. No sign-in required.
-- **Walk-in booking**: a public self-service screen where visitors can book a
-  room without creating an account.
-- **Member reservations**: book a room, view upcoming meetings, cancel bookings,
-  and check reservation history and notifications.
-- **Instant confirmation**: new reservations are confirmed immediately.
-- **No double booking**: the system blocks any time that overlaps an existing
-  reservation.
+- **Public room browsing**: see room photos, equipment, capacity, and booked
+  time slots (08:00–20:00) without signing in.
+- **Walk-in kiosk** (`/#walkin`): book a room without an account by entering a
+  name or employee ID.
+- **Member accounts**: register, sign in, sign out, and change your password.
+- **Instant reservations**: each booking covers one room, one date, and one
+  time range, and is confirmed right away.
+- **Booking validation**: the server checks every booking against the rules
+  below. It prevents overlaps and duplicate submissions.
+- **My reservations**: view upcoming bookings, history, and notifications, and
+  cancel bookings.
+- **Administration**:
+  - booking management, filtered by date and room, with walk-in and member
+    bookings listed separately
+  - room management: add, edit, change photo, or delete rooms
+  - member and role management
+- **Thai / English** interface and **light / dark** theme.
 - **Privacy**: other users can see that a time slot is taken, but not who booked
-  it or what the meeting is about.
-- **Administration**: add, edit, or deactivate rooms, upload room photos, and
-  manage user accounts and roles.
-- **Thai / English** language switch and **light / dark** theme.
-- **Data is saved permanently**: everything stays in the database after the
-  server restarts.
+  it or the meeting title.
 
 ---
 
 ## Tech Stack
 
-| Part      | Technology                                    |
-|-----------|-----------------------------------------------|
-| Backend   | Java 17, Spring Boot 3.3.5                    |
-| Database  | H2 (stored in `data/meetspace.mv.db`)         |
-| Frontend  | HTML, CSS, JavaScript                         |
-| Security  | BCrypt password hashing                       |
-| Build     | Maven                                         |
-| Testing   | JUnit 5, Node.js test runner                  |
+| Part      | Technology                              |
+|-----------|-----------------------------------------|
+| Backend   | Java 17, Spring Boot 3.3.5              |
+| Database  | H2 (stored in `data/meetspace.mv.db`)   |
+| Frontend  | HTML, CSS, JavaScript                   |
+| Security  | BCrypt password hashing                 |
+| Build     | Maven                                   |
+| Testing   | JUnit 5, Node.js test runner            |
 
 ---
 
 ## How to Run
 
-### 1. Install requirements
+### 1. Requirements
 
 - **Java 17**
 - **Maven 3.9+**
@@ -57,38 +100,38 @@ mvn spring-boot:run
 
 ### 3. Open the website
 
-Go to **http://localhost:8080**
+Go to **http://localhost:8080**. To stop the server, press `Ctrl + C`.
 
-To stop the server, press `Ctrl + C`.
-
-> The `data` folder and database are created automatically the first time the
-> app runs.
+> The database is created automatically in the `data` folder the first time the
+> app runs, and your data is kept after a restart.
 
 ---
 
 ## How to Use
 
-### As a guest (no account)
+### Guest (no account)
 
 1. Open the home page to see all rooms and their availability.
-2. Click a room to see its schedule for any date.
+2. Choose a date to see which time slots are free.
 
-### Walk-in booking (no account)
+### Walk-in kiosk (no account)
 
 1. Open **http://localhost:8080/#walkin**
-2. Choose a room, date, and time, then enter your name and a meeting title.
-3. Confirm. The booking is confirmed right away, and you get a reference number.
+2. Choose a room, date, and time.
+3. Enter your name or employee ID and a meeting title.
+4. Confirm. The booking is confirmed immediately, and a reference number is
+   shown.
 
-### As a member
+### Member
 
 1. Click **Sign in**, or register a new account. Passwords must be 8–12
    characters.
 2. Choose a room and click **Reserve**.
-3. Fill in the meeting title, date, and time, then review and confirm.
-4. Go to **My reservations** to see or cancel your bookings.
-5. Go to **History** and **Notifications** to see past bookings and updates.
+3. Enter the meeting title, date, and time, then review and confirm.
+4. Use **My reservations** to view or cancel bookings.
+5. Use **History** and **Notifications** to check past bookings and updates.
 
-### As an administrator
+### Administrator
 
 Sign in with the test admin account:
 
@@ -98,20 +141,23 @@ Sign in with the test admin account:
 
 Then open **Administration**, where you can:
 
-- **Room management**: add or edit rooms, change photos, or deactivate a room.
-- **Team access**: add members and change user roles.
+- manage all bookings
+- add or edit rooms
+- manage members and their roles
 
 ---
 
 ## Booking Rules
 
-| Rule              | Detail                                       |
-|-------------------|----------------------------------------------|
-| Opening hours     | 08:00 – 20:00 (Bangkok time, UTC+7)          |
-| Time slots        | Every 30 minutes                             |
-| Maximum length    | 4 hours per booking                          |
-| Overlaps          | Not allowed                                  |
-| Cancellation      | Only for bookings that have not ended yet    |
+| Rule            | Detail                                          |
+|-----------------|-------------------------------------------------|
+| Opening hours   | 08:00 – 20:00 (Bangkok time, UTC+7)             |
+| Time slots      | Every 30 minutes                                |
+| Maximum length  | 4 hours per booking                             |
+| Booking window  | Must be in the future, up to 1 year ahead       |
+| Overlaps        | Not allowed                                     |
+| Cancellation    | Only for bookings that have not ended yet       |
+| Editing         | Not supported. Cancel and book again instead.   |
 
 ---
 
@@ -124,11 +170,8 @@ Then open **Administration**, where you can:
 | MS-307 | Innovation Lab       | Floor 3 · East Wing    | 20       |
 | MS-410 | Skyline Boardroom    | Floor 4 · West Wing    | 16       |
 
-Administrators can upload new room photos with these limits:
-
-- PNG or JPG only
-- up to 3 MB
-- up to 6000 px per side
+Administrators can upload room photos in PNG or JPG format, up to 3 MB and
+6000 px per side.
 
 ---
 
@@ -142,16 +185,5 @@ mvn clean test
 node --test src/test/ui.test.cjs
 ```
 
-The tests cover:
-
-- guest access
-- sign-in protection
-- registration and password rules
-- walk-in privacy
-- booking conflicts
-- room photos
-- page rendering
-
 ---
-
 
