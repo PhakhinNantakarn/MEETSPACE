@@ -1,0 +1,41 @@
+# MEETSPACE — Cloud Build -> Artifact Registry -> Cloud Run
+# Set up Artifact Registry repository "meetspace-images" in asia-southeast1 first.
+# For a classroom demo: max 1 instance; H2 data is still temporary.
+substitutions:
+  _REGION: asia-southeast1
+  _REPOSITORY: meetspace-images
+  _SERVICE: meetspace
+
+steps:
+  - id: build-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+      - .
+
+  - id: push-image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+
+  - id: deploy-to-cloud-run
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+      - --region=${_REGION}
+      - --port=8080
+      - --max-instances=1
+      - --concurrency=1
+      - --memory=1Gi
+      - --set-env-vars=SPRING_H2_CONSOLE_ENABLED=false
+      # Deliberately omit --allow-unauthenticated until admin credentials are secured.
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID

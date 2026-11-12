@@ -1,0 +1,17 @@
+# Files not needed in the Docker build context
+.git
+.github
+.vscode
+.idea
+.DS_Store
+*.log
+*.tmp
+*.zip
+*.rar
+.env
+.env.*
+**/target
+**/data
+**/node_modules
+README_PERSON*.txt
+README_DEPLOY_TH.md
