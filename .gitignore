@@ -1,0 +1,23 @@
+# Maven build output
+/target/
+**/target/
+
+# Local H2 data, user accounts and uploaded room images
+/data/
+*.mv.db
+*.trace.db
+*.lock.db
+
+# IDE / OS files
+.idea/
+.classpath
+.project
+.settings/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local logs and secrets
+*.log
+.env
+.env.*
