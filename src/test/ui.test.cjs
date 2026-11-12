@@ -4,26 +4,15 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname,'../main/resources/static/app.js'),'utf8')
-    // Skip only the startup network call; keep helpers declared later in app.js.
-    .replace(/^try\{const session=await api\('session'\).*$/m, '');
-
-/**
- * Sets up a mock DOM and browser environment using Node.js 'vm' module.
- * This allows testing the frontend application logic (app.js) without needing a real browser.
- * 
- * ฟังก์ชันสร้างสภาพแวดล้อมจำลอง (Mock DOM & Browser) ด้วยโมดูล 'vm' ของ Node.js
- * เพื่อให้สามารถทดสอบลอจิกของแอปพลิเคชันหน้าบ้าน (app.js) ได้โดยไม่ต้องใช้เบราว์เซอร์จริง
- *
- * @returns {Object} {run, nodes} - run: function to execute code in context, nodes: map of mocked DOM elements
- */
+    .split("try{const session=await api('session')")[0];
 function setup() {
     const nodes = new Map();
     const element = () => ({innerHTML:'',open:false,addEventListener(){},setAttribute(){},
         showModal(){this.open=true},querySelector(){return null},focus(){},classList:{toggle(){}}});
-    const context = vm.createContext({console,Intl,Date,URL,crypto:require('node:crypto').webcrypto,addEventListener(){},
+    const context = vm.createContext({console,Intl,Date,URL,crypto:require('node:crypto').webcrypto,
         localStorage:{getItem(){return null}},setInterval(){},setTimeout(){},
         window:{location:{hash:'#walkin',pathname:'/'},history:{replaceState(){}},scrollTo(){}},
-        document:{getElementById(){return null},querySelector(selector){
+        document:{querySelector(selector){
             if(selector==='#booking-form')return null;
             if(!nodes.has(selector))nodes.set(selector,element());
             return nodes.get(selector);
@@ -33,14 +22,6 @@ function setup() {
     vm.runInContext(`S.rooms=[{id:'MS-101',name:'Inspire',name_th:'ห้อง',location:'Floor 1',location_th:'ชั้น 1',capacity:6,active:1,approval:0,image:'/images/inspire-room.png',amenities:'wifi',color:'indigo'}]`,context);
     return {run:code=>vm.runInContext(code,context),nodes};
 }
-
-/*
- * Tests that the walk-in booking screen is displayed as a separate public view 
- * showing room images, while hiding member-specific filters.
- * 
- * ทดสอบว่าหน้าการจองแบบ Walk-in จะแสดงผลแยกเป็นหน้าสาธารณะ 
- * ซึ่งแสดงรูปภาพห้อง แต่จะซ่อนตัวกรองข้อมูลที่มีไว้สำหรับสมาชิกเท่านั้น
- */
 test('walk-in is a separate public screen with room photos',()=>{
     const {run,nodes}=setup();run('render()');
     const html=nodes.get('#app').innerHTML;
@@ -48,14 +29,6 @@ test('walk-in is a separate public screen with room photos',()=>{
     assert.match(html,/inspire-room.png/);
     assert.doesNotMatch(html,/data-action="showLogin"|data-filter="status"|data-filter="capacity"/);
 });
-
-/*
- * Ensures the guest booking form does not ask for participants or repeating booking options,
- * and does not forcefully redirect the guest to the login screen.
- * 
- * ตรวจสอบให้แน่ใจว่าฟอร์มการจองสำหรับผู้ใช้ทั่วไป (Guest) จะไม่ถามถึงจำนวนผู้เข้าร่วมหรือการจองซ้ำ
- * และต้องไม่มีการบังคับเปลี่ยนหน้าไปยังหน้าเข้าสู่ระบบ (Login)
- */
 test('guest booking form omits participants and repeat without redirecting to login',()=>{
     const {run,nodes}=setup();run("openBooking('MS-101')");
     const html=nodes.get('#dialog').innerHTML;
@@ -63,14 +36,6 @@ test('guest booking form omits participants and repeat without redirecting to lo
     assert.doesNotMatch(html,/name="participants"|name="repeat"|name="skip"/);
     assert.equal(run('S.authScreen'),false);
 });
-
-/*
- * Checks that the booking review dialog omits fields like participants and status,
- * while still keeping the confirmation flow intact.
- * 
- * ตรวจสอบว่ากล่องโต้ตอบสำหรับการทบทวนการจอง ไม่แสดงฟิลด์จำนวนผู้เข้าร่วมและสถานะ
- * แต่ยังคงสามารถดำเนินการไปสู่การกดยืนยันการจองได้ตามปกติ
- */
 test('review omits participants and status and remains confirmable',()=>{
     const {run,nodes}=setup();
     run("openBooking('MS-101');draft.title='Study';draft.booker='Employee 123';reviewBooking()");
@@ -78,14 +43,6 @@ test('review omits participants and status and remains confirmable',()=>{
     assert.match(html,/confirm-form/);
     assert.doesNotMatch(html,/Participants|Status|Pending approval/);
 });
-
-/*
- * Verifies that administrators have access to an image selection/upload field in the room form,
- * and confirms that the approval panel is not present.
- * 
- * ตรวจสอบว่าแอดมินสามารถเข้าถึงช่องสำหรับอัปโหลด/เลือกรูปภาพในฟอร์มแก้ไขห้องประชุมได้
- * และตรวจสอบว่าไม่มีการแสดงผลส่วนจัดการสถานะการอนุมัติ
- */
 test('admin has room image selection and upload, without approval or all-reservations panel',()=>{
     const {run,nodes}=setup();run("S.user={id:'admin',name:'Admin',role:'admin'};S.view='admin';render()");
     assert.doesNotMatch(nodes.get('#app').innerHTML,/All reservations|Pending approvals|Reservation requests|<th>Status/);
@@ -95,14 +52,6 @@ test('admin has room image selection and upload, without approval or all-reserva
     assert.match(html,/name="image"/);
     assert.doesNotMatch(html,/name="approval"/);
 });
-
-/*
- * Checks that reservation lists show booking statuses visually (e.g., badges), 
- * and admin views clearly differentiate between 'Member' and 'Walk-in' booking sources.
- * 
- * ตรวจสอบว่ารายการการจองมีการแสดงสถานะเป็นป้าย (Badge) 
- * และในมุมมองของแอดมินจะต้องมีการแสดงข้อความแยกแหล่งที่มาของการจองระหว่าง 'สมาชิก' และ 'Walk-in' อย่างชัดเจน
- */
 test('reservation lists show status and admin bookings show member or walk-in source',()=>{
     const {run,nodes}=setup();
     run("S.view='my';S.user={id:'u1',name:'Member',role:'user'};S.bookings=[{id:'b1',rid:'MS-101',uid:'u1',title:'Room reservation',date:'2999-01-01',start:'10:00',end:'11:00',status:'confirmed'}];render()");
@@ -113,14 +62,6 @@ test('reservation lists show status and admin bookings show member or walk-in so
     assert.match(html,/badge cancelled/);
     assert.doesNotMatch(html,/<th>Status/);
 });
-
-/*
- * Ensures that 'keep' or 'close' buttons inside dialog boxes operate as standard buttons (type="button")
- * and do not inadvertently trigger a form submission.
- * 
- * ตรวจสอบให้แน่ใจว่าปุ่มประเภท 'เก็บการจองไว้' หรือปุ่ม 'ปิด' ภายในกล่องโต้ตอบ
- * ถูกตั้งค่าเป็นปุ่มธรรมดา (type="button") และไม่ทำให้เกิดการส่งข้อมูลแบบ submit ฟอร์ม
- */
 test('keep and cancel buttons inside dialogs never submit the form',()=>{
     const {run,nodes}=setup();
     run("S.view='my';S.user={id:'u1',name:'Member',role:'user'};S.bookings=[{id:'b1',rid:'MS-101',uid:'u1',title:'Room reservation',date:'2999-01-01',start:'10:00',end:'11:00',status:'confirmed'}];cancelDialog('b1')");
@@ -130,14 +71,6 @@ test('keep and cancel buttons inside dialogs never submit the form',()=>{
     run("S.user={id:'admin',name:'Admin',role:'admin'};roomForm('MS-101')");
     assert.match(nodes.get('#dialog').innerHTML,/<button type="button" class="btn " data-action="close"\s*>/);
 });
-
-/*
- * Validates that bookings map exclusively to 'confirmed' or 'cancelled' statuses in the UI,
- * successfully mapping away unnecessary pending or rejected states.
- * 
- * ตรวจสอบว่าในหน้าจอผู้ใช้ การจองจะถูกจัดกลุ่มสถานะให้เหลือแค่ 'confirmed' (ยืนยัน) หรือ 'cancelled' (ยกเลิก)
- * โดยต้องไม่มีการแสดงสถานะรอดำเนินการ (pending) หรือปฏิเสธ (rejected) โผล่มา
- */
 test('statuses are only confirmed or cancelled, with no approval actions',()=>{
     const {run,nodes}=setup();
     run("S.view='admin';S.tab='bookingManagement';S.user={id:'admin',name:'Admin',role:'admin'};S.bookings=[{id:'p1',rid:'MS-101',uid:'u1',title:'Room reservation',date:'2999-01-01',start:'10:00',end:'11:00',status:'pending'},{id:'r1',rid:'MS-101',uid:'u1',title:'Room reservation',date:'2999-01-02',start:'10:00',end:'11:00',status:'rejected'},{id:'e1',rid:'MS-101',uid:'u1',title:'Room reservation',date:'2000-01-01',start:'10:00',end:'11:00',status:'confirmed'}];render()");
@@ -146,14 +79,6 @@ test('statuses are only confirmed or cancelled, with no approval actions',()=>{
     assert.equal((html.match(/badge confirmed/g)||[]).length,2);
     assert.equal((html.match(/badge cancelled/g)||[]).length,1);
 });
-
-/*
- * Tests the soft-delete functionality for rooms. Deleted rooms should disappear 
- * from the active room lists but their names must remain intact for historical booking records.
- * 
- * ทดสอบฟังก์ชันการลบห้องแบบ Soft-delete ห้องที่ถูกลบไปแล้วจะต้องหายไปจากหน้ารายการห้องที่จองได้
- * แต่ชื่อห้องจะต้องยังคงแสดงอยู่หากดูในหน้าประวัติการจองย้อนหลัง
- */
 test('admin can delete a room; deleted rooms disappear from lists but keep history names',()=>{
     const {run,nodes}=setup();
     run("S.user={id:'admin',name:'Admin',role:'admin'};S.view='admin';S.tab='roomManagement';applyData({rooms:[S.rooms[0],{...S.rooms[0],id:'OLD-1',name:'Old Room',deleted:1}],bookings:[{id:'h1',rid:'OLD-1',uid:'admin',title:'Room reservation',date:'2000-01-01',start:'10:00',end:'11:00',status:'confirmed'}]});render()");
@@ -169,14 +94,6 @@ test('admin can delete a room; deleted rooms disappear from lists but keep histo
     run("S.view='history';render()");
     assert.match(nodes.get('#app').innerHTML,/Old Room/);
 });
-
-/*
- * Verifies that the admin dashboard splits bookings into two distinct sections: Walk-in and Member.
- * Additionally checks that date and room filters work properly across both sections.
- * 
- * ตรวจสอบว่าแดชบอร์ดแอดมินมีการแยกหมวดหมู่การจองออกเป็นสองส่วนอย่างชัดเจน: Walk-in และ สมาชิก
- * รวมถึงทดสอบว่าตัวกรองวันที่และตัวกรองห้องทำงานได้ถูกต้องกับข้อมูลทั้งสองส่วนนี้
- */
 test('admin bookings are split into walk-in and member sides and filtered by date and room',()=>{
     const {run,nodes}=setup();
     run(`S.user={id:'admin',name:'Admin',role:'admin'};S.view='admin';S.tab='bookingManagement';
@@ -199,14 +116,6 @@ test('admin bookings are split into walk-in and member sides and filtered by dat
     assert.match(walk,/Kiosk Kim/);assert.doesNotMatch(member,/Member May/);
     assert.match(member,/No reservations match/);
 });
-
-/*
- * Ensures that anonymous/occupied time slots (sent from backend to show room unavailability)
- * do not accidentally leak into the user's personal "My Bookings" list.
- * 
- * ตรวจสอบให้แน่ใจว่าช่วงเวลาของห้องที่ถูกจองแล้ว (ข้อมูลแบบไม่ระบุตัวตนที่ส่งมาเพื่อบล็อกคิวว่าง)
- * จะไม่หลุดเข้ามาปะปนอยู่ในลิสต์ "การจองของฉัน" (My Bookings) ของผู้ใช้งาน
- */
 test('anonymous occupied slots never appear as guest personal reservations',()=>{
     const {run}=setup();run("S.bookings=[{rid:'MS-101',status:'confirmed'}]");
     assert.equal(run('mine().length'),0);
