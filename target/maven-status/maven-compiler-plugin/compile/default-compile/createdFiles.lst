@@ -1,0 +1,7 @@
+com\meetspace\app\ApiController$User.class
+com\meetspace\app\MeetSpaceApplication.class
+com\meetspace\app\RoomImages.class
+com\meetspace\app\ApiController$Room.class
+com\meetspace\app\ApiController$Booking.class
+com\meetspace\app\ApiController.class
+com\meetspace\app\ApiController$Event.class

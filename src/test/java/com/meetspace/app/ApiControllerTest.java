@@ -24,10 +24,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Integration tests for the MeetSpace API endpoints.
- * คลาสทดสอบการทำงานรวม (Integration Test) สำหรับ API Endpoints ของระบบ MeetSpace
- */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:meetspace-test;DB_CLOSE_DELAY=-1",
         "spring.sql.init.mode=always",
@@ -46,10 +42,6 @@ class ApiControllerTest {
     @Autowired
     JdbcTemplate jdbc;
 
-    /**
-     * Cleans up the database state before each test runs to ensure test isolation.
-     * ล้างข้อมูลในฐานข้อมูลก่อนเริ่มการทดสอบแต่ละครั้ง เพื่อให้แน่ใจว่าการทดสอบจะไม่กระทบกัน
-     */
     @BeforeEach
     void cleanUserData() {
         jdbc.update("DELETE FROM booking_event");
@@ -57,10 +49,6 @@ class ApiControllerTest {
         jdbc.update("DELETE FROM app_user WHERE id NOT IN ('workspace-admin', 'walk-in')");
     }
 
-    /**
-     * Tests that the registration API enforces password length rules (8 to 12 characters).
-     * ทดสอบว่า API การสมัครสมาชิกมีการบังคับใช้กฎความยาวของรหัสผ่าน (ต้องอยู่ระหว่าง 8 ถึง 12 ตัวอักษร)
-     */
     @Test
     void passwordMustBeBetweenEightAndTwelveCharacters() throws Exception {
         register("seven", "1234567")
@@ -78,10 +66,6 @@ class ApiControllerTest {
                 .andExpect(jsonPath("$.error").value("passwordLength"));
     }
 
-    /**
-     * Verifies that unauthenticated users can view dashboard data (rooms) but are blocked from making bookings.
-     * ตรวจสอบว่าผู้ใช้ทั่วไปที่ยังไม่ได้เข้าสู่ระบบสามารถดูข้อมูลแดชบอร์ด (ห้องประชุม) ได้ แต่จะถูกบล็อกไม่ให้ทำการจอง
-     */
     @Test
     void guestsCanBrowseButCannotBook() throws Exception {
         mvc.perform(get("/api/data"))
@@ -106,12 +90,6 @@ class ApiControllerTest {
                 .andExpect(jsonPath("$.error").value("signIn"));
     }
 
-    /**
-     * Tests the complete flow of a member registering, booking, and checks data privacy rules 
-     * (e.g., booking title is hidden from non-owners) and admin interaction limitations.
-     * ทดสอบกระบวนการทั้งหมดตั้งแต่สมาชิกสมัครสมาชิก ทำการจอง และตรวจสอบกฎความรัดกุมของข้อมูล 
-     * (เช่น ซ่อนหัวข้อการจองจากคนที่ไม่ใช่เจ้าของ) รวมถึงข้อจำกัดในการจัดการของแอดมิน
-     */
     @Test
     void registrationBookingPrivacyAndImmediateConfirmationWorkTogether() throws Exception {
         MvcResult registration = register("member", "pass1234")
@@ -161,10 +139,6 @@ class ApiControllerTest {
                 .andExpect(jsonPath("$.bookings[0].status").value("confirmed"));
     }
 
-    /**
-     * Tests walk-in booking endpoints ensuring they work without a session, but correctly reject duplicate or conflicting requests.
-     * ทดสอบ Endpoint การจองแบบ Walk-in เพื่อให้แน่ใจว่าทำงานได้โดยไม่ต้องมีเซสชัน แต่จะปฏิเสธคำขอที่ซ้ำซ้อนหรือเวลาชนกันอย่างถูกต้อง
-     */
     @Test
     void walkInBooksWithoutSessionAndRejectsConflicts() throws Exception {
         var body = bookingRequest();
@@ -187,10 +161,6 @@ class ApiControllerTest {
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("duplicate"));
     }
 
-    /**
-     * Ensures that injecting arbitrary or unauthorized properties (like 'repeat' or manipulating 'participants') doesn't bypass backend logic.
-     * ตรวจสอบว่าการแทรกฟิลด์ข้อมูลที่ไม่ได้รับอนุญาตหรือไม่เกี่ยวข้อง (เช่น 'repeat' หรือการพยายามปรับ 'participants') จะไม่สามารถข้ามการตรวจสอบของระบบหลังบ้านได้
-     */
     @Test
     void removedRepeatAndParticipantsCannotAffectBooking() throws Exception {
         var body = new java.util.HashMap<>(bookingRequest());
@@ -201,10 +171,6 @@ class ApiControllerTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.bookings.length()").value(1));
     }
 
-    /**
-     * Tests that room modification requires admin privileges and that base64 uploaded images are strictly validated.
-     * ทดสอบว่าการแก้ไขข้อมูลห้องประชุมต้องใช้สิทธิ์แอดมิน และตรวจสอบว่าระบบมีการตรวจสอบความถูกต้องของรูปภาพ Base64 อย่างเข้มงวด
-     */
     @Test
     void onlyAdminCanSaveValidatedRoomPhotos() throws Exception {
         var body = new java.util.HashMap<String, Object>();
@@ -247,10 +213,6 @@ class ApiControllerTest {
                         .content(json.writeValueAsString(body))).andExpect(status().isOk());
     }
 
-    /**
-     * Verifies that only the original booker can cancel a reservation, and that past reservations cannot be cancelled.
-     * ตรวจสอบว่ามีเพียงผู้ที่จองเองเท่านั้นที่สามารถยกเลิกการจองได้ และระบบไม่อนุญาตให้ยกเลิกการจองที่ผ่านเวลาไปแล้ว
-     */
     @Test
     void cancellationIsLimitedToOwnerAndActiveReservations() throws Exception {
         MockHttpSession owner = session(register("owner", "pass1234").andExpect(status().isOk()).andReturn());
@@ -287,10 +249,6 @@ class ApiControllerTest {
                 .andExpect(jsonPath("$.error").value("alreadyEnded"));
     }
 
-    /**
-     * Tests room soft-deletion logic. Rooms with upcoming bookings cannot be deleted. Deleted rooms hide their future availability but retain past history.
-     * ทดสอบตรรกะการลบห้องแบบ Soft-delete ห้องที่มีการจองล่วงหน้าจะไม่สามารถลบได้ ห้องที่ถูกลบไปแล้วจะไม่รับการจองใหม่ แต่ยังคงเก็บประวัติเดิมไว้
-     */
     @Test
     void adminCanDeleteRoomWithoutUpcomingReservationsAndHistoryIsKept() throws Exception {
         MockHttpSession admin = session(mvc.perform(post("/api/login")
@@ -345,14 +303,6 @@ class ApiControllerTest {
         }
     }
 
-    /**
-     * Helper method to simulate a user registration request.
-     * เมธอดช่วยเหลือสำหรับจำลองคำขอการสมัครสมาชิก
-     *
-     * @param label - A unique label for the user / ชื่อที่ใช้ระบุตัวตนในการทดสอบ
-     * @param password - The desired password / รหัสผ่านที่ต้องการ
-     * @return ResultActions containing the API response / ออบเจ็กต์ที่มีผลลัพธ์จากการเรียก API
-     */
     private org.springframework.test.web.servlet.ResultActions register(String label, String password)
             throws Exception {
         return mvc.perform(post("/api/register")
@@ -363,12 +313,6 @@ class ApiControllerTest {
                         "password", password))));
     }
 
-    /**
-     * Helper method to generate a standard mock booking payload.
-     * เมธอดช่วยเหลือสำหรับสร้างข้อมูลการจองจำลอง (Payload) แบบมาตรฐาน
-     *
-     * @return A map representing the booking request JSON / Map ที่ใช้เป็น JSON สำหรับคำขอการจอง
-     */
     private Map<String, Object> bookingRequest() {
         return Map.of(
                 "rid", "MS-204",
@@ -380,13 +324,6 @@ class ApiControllerTest {
                 "key", UUID.randomUUID().toString());
     }
 
-    /**
-     * Helper method to extract the HTTP session from an MVC result.
-     * เมธอดช่วยเหลือสำหรับดึง HTTP Session ออกมาจากผลลัพธ์ของ MVC 
-     *
-     * @param result - The MvcResult from a request / ผลลัพธ์จากการจำลองยิง Request
-     * @return The extracted MockHttpSession / MockHttpSession ที่ดึงออกมา
-     */
     private MockHttpSession session(MvcResult result) {
         HttpSession session = result.getRequest().getSession(false);
         return (MockHttpSession) session;
