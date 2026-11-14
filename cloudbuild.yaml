@@ -1,41 +1,42 @@
-# MEETSPACE — Cloud Build -> Artifact Registry -> Cloud Run
-# Set up Artifact Registry repository "meetspace-images" in asia-southeast1 first.
-# For a classroom demo: max 1 instance; H2 data is still temporary.
+# MEETSPACE — Continuous Deployment (same pattern as the class lab)
+# git push -> Cloud Build: (1) docker build  (2) docker push to Artifact Registry  (3) deploy to Cloud Run
+
 substitutions:
-  _REGION: asia-southeast1
-  _REPOSITORY: meetspace-images
+  _PROJECT_ID: meetspace-514704
+  _REGION: us-central1
+  _REPOSITORY: webdev-dockers
   _SERVICE: meetspace
 
 steps:
-  - id: build-image
+  # 1) Build the Docker image
+  - id: build
     name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
-      - .
+    args: ["build", "-t", "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:latest", "."]
 
-  - id: push-image
+  # 2) Push the image to Artifact Registry
+  - id: push
     name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+    args: ["push", "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:latest"]
 
-  - id: deploy-to-cloud-run
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+  # 3) Deploy to Cloud Run and make it public
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
       - run
       - deploy
       - ${_SERVICE}
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+      - --image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:latest
       - --region=${_REGION}
+      - --platform=managed
       - --port=8080
-      - --max-instances=1
-      - --concurrency=1
       - --memory=1Gi
+      - --max-instances=1
+      - --allow-unauthenticated
       - --set-env-vars=SPRING_H2_CONSOLE_ENABLED=false
-      # Deliberately omit --allow-unauthenticated until admin credentials are secured.
 
 images:
-  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE}:$BUILD_ID
+  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY
